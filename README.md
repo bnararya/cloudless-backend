@@ -11,5 +11,5 @@ To use this app you have to install the dependencies
 just type following commands
 
 ```
-python app.py
+python main.py
 ```
