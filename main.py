@@ -3,7 +3,7 @@ from flask_restful import Resource, Api
 from flask_restful import reqparse
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from bson.json_util import dumps
 import json
 
@@ -94,10 +94,30 @@ class User(Resource):
         resp.status_code = 404
         return resp 
 
+class Login(Resource):
+    def post(self):
+        _json = request.json
+        _name = _json['name']
+        _pwd = _json['pwd']
+        print(_name)
+        if _name and _pwd and request.method == 'POST' :
+            user = mongo.db.user.find_one_or_404({'name': _name})
+            check_password = check_password_hash(user['pwd'], _pwd)
+            if check_password:           
+                resp = jsonify("Login successfully")
+                resp.status_code = 200
+                return resp
+            else:
+                resp = jsonify("Wrong Username or password ")
+                resp.status_code = 401
+                return resp
+
+
 api.add_resource(Product, '/product')
 api.add_resource(Merchants, '/merchants')
 api.add_resource(Merchant, '/merchant')
 api.add_resource(User, '/user')
+api.add_resource(Login, '/login')
 
 if __name__ == '__main__':
     app.run(debug=True)
