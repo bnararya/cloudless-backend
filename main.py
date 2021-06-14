@@ -3,7 +3,7 @@ from flask_restful import Resource, Api
 from flask_restful import reqparse
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from bson.json_util import dumps
 import json
 
@@ -19,6 +19,20 @@ app.config['MONGO_URI'] = "mongodb://{user}:{pw}@{host}:{port}/{name}?authSource
 auth_file.close()
 
 mongo = PyMongo(app)
+
+class Promo(Resource):
+    def get(self):
+        query = {'on_promo': True}
+        promo = list(mongo.db.product.find(query))
+        for product in promo:
+            merchant = mongo.db.merchant.find_one({'_id': ObjectId(product['merchant_id'])})
+            product.update(merchant_name = merchant['name'])
+        return json.loads(dumps(promo))
+
+class Banner(Resource):
+    def get(self):
+        banner = list(mongo.db.banner.find())
+        return json.loads(dumps(banner))
 
 class Product(Resource):
     def get(self):
@@ -40,7 +54,6 @@ class Merchant(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('merchant_id', type=str, location='args')
         args = parser.parse_args()
-        print(args)
         merchant = mongo.db.merchant.find_one_or_404({'_id': ObjectId(args['merchant_id'])})
         return json.loads(dumps(merchant))
 
@@ -94,10 +107,32 @@ class User(Resource):
         resp.status_code = 404
         return resp 
 
+class Login(Resource):
+    def post(self):
+        _json = request.json
+        _name = _json['name']
+        _pwd = _json['pwd']
+        print(_name)
+        if _name and _pwd and request.method == 'POST' :
+            user = mongo.db.user.find_one_or_404({'name': _name})
+            check_password = check_password_hash(user['pwd'], _pwd)
+            if check_password:           
+                # resp = jsonify("Login successfully")
+                # resp.status_code = 200
+                return json.loads(dumps(user))
+            else:
+                resp = jsonify("Wrong Username or password ")
+                resp.status_code = 401
+                return resp
+
+
+api.add_resource(Banner, '/banner')
 api.add_resource(Product, '/product')
+api.add_resource(Promo, '/promo')
 api.add_resource(Merchants, '/merchants')
 api.add_resource(Merchant, '/merchant')
 api.add_resource(User, '/user')
+api.add_resource(Login, '/login')
 
 if __name__ == '__main__':
     app.run(debug=True)
